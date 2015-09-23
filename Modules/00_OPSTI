@@ -1,0 +1,39 @@
+Option Compare Database
+Option Explicit
+
+
+
+Public Declare Function ActivateKeyboardLayout Lib "user32" _
+(ByVal HKL As Long, ByVal flags As Long) As Long
+
+'Pravi broj pacijenta
+Public Function BP(i As String, P As String, d As Date) As String
+   BP = ChrW(AscW(Left(i, 1)))
+   BP = BP & ChrW(AscW(Left(P, 1)))
+   BP = BP & CStr(Format(Day(d), "00"))
+   BP = BP & CStr(Format(Month(d), "00"))
+   BP = BP & CStr(Format(Year(d), "0000"))
+End Function
+
+Public Sub PodesiTextBox(t As TextBox)
+   t.SetFocus
+   t.SelStart = Len(t.Text)
+   t.SelLength = 0
+End Sub
+
+Public Function ImaLiFotki(B) As Boolean
+    Dim imaliga
+    
+    If Not IsNull(B) Then
+        imaliga = DLookup("BP", "BrojPacijenta", "BP = " & B)
+    Else
+        imaliga = Null
+    End If
+    
+    If IsNull(imaliga) Then
+        ImaLiFotki = False
+    Else
+        ImaLiFotki = True
+    End If
+    
+End Function
