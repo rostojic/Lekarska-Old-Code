@@ -1,0 +1,141 @@
+Option Compare Database
+Option Explicit
+
+'CONSTANTE ZA Word
+Public Const wdHeaderFooterFirstPage = 2
+Public Const wdReplaceAll = 2
+
+Public izabranLCID As Long
+'za odluku da li dodati stari ili otvoriti novi izvestaj ...
+Public Odluka As Long
+Public OdlukaZaDuplog As Long
+
+'Pojavljuje se na labeli na Uvodnoj formi
+Public DanaDoKraja As Long
+Public izabrani As Long
+Public izabraniSkokNaPacijenta As Long
+'Kada se jave dva ista, ova se vrednost upisuje sa forme DUPLI_F
+Public GdeDaSkocim As Long
+
+Public DaNe As Boolean
+'Mustra za ekstenziju slika u obliku "*.BMP" ili "*.JPG", "*.JPEG"
+'Ukoliko ne postoji registry kljuc, default vrednost je "*.JPG"
+Public Mustra As String
+'Ovo setujem da prikazem Demo Labelu na uvodnoj formi
+Public ProgramOtkljucan As Boolean
+'Zbog funkcije StrConv koja pravi probleme na
+'neUnicode operativnim sistemima
+Public UnicodePodrzan As Boolean
+
+Function StartFun()
+
+   On Error GoTo g
+   
+   'Ovak kljuc_x setuje VB programcic PRE ...
+   Dim kljuc_x As String
+         
+   'Provera postojanja kljuca ...
+   kljuc_x = GetSetting(appname:="XRay", Section:="X", Key:="X")
+   Mustra = GetSetting("XRay", "X", "EksSlike", "*.JPG")
+   UnicodePodrzan = SysVersions32
+   'Kljuc ne postoji ...
+   If kljuc_x = "" Or Err.Number <> 0 Then
+      MsgBox "Nelegalno koriscenje programa." & vbNewLine & "Pozovite autora (+381 11) 239 44 99", _
+      vbExclamation, "TM Soft 2006"
+      DoCmd.Quit
+   End If
+   
+   Dim ValidanOstatak As String
+   ValidanOstatak = Mid(kljuc_x, 1, 2) & Mid(kljuc_x, 5, 3) & _
+                    Mid(kljuc_x, 10, 1) & Mid(kljuc_x, 15)
+   
+   'I Provera razbijanja kljuca ...
+   If ValidanOstatak <> "141435008" Then
+      MsgBox "Nelegalno koriscenje programa." & vbNewLine & "Pozovite autora (+381 11) 239 44 99", _
+      vbExclamation, "TM Soft 2008"
+      DoCmd.Quit
+   End If
+               
+   'II Provera da li je program istekao ....
+   If kljuc_x = "14991439959999008" Then
+'               "14yy143mm5ttdd008" Ovako je bilo (tt za trajanje)
+      MsgBox "Demo period paketa Lekarska Ordinacija istekao" & vbNewLine & "Pozovite autora (+381 11) 239 44 99", _
+      vbExclamation, "TM Soft 2008"
+      DoCmd.Quit
+      Exit Function
+   End If
+               
+   'III Provera da li je program otkljucan ...
+   If kljuc_x = "14001430050000008" Then
+'               "14yy143mm5ttdd008" Ovako je bilo (tt za trajanje)
+      ProgramOtkljucan = True
+      Exit Function
+   End If
+
+   'IV  Proracun trajanja ....
+   Dim Danas As Date
+   Dim Instaliran As Date
+   Dim PeriodProbe As Long
+   
+   Dim d As String
+   Dim m As String
+   Dim g As String
+   
+   d = Mid(kljuc_x, 13, 2)
+   m = Mid(kljuc_x, 8, 2)
+   g = "20" & Mid(kljuc_x, 3, 2)
+   
+   Dim ins
+   ins = m & "/" & d & "/" & g
+   Instaliran = Format(ins, "mm/dd/yyyy")
+   
+   Danas = Date
+    
+   PeriodProbe = CLng(Mid(kljuc_x, 11, 2))
+   
+   Instaliran = Instaliran + PeriodProbe
+   DanaDoKraja = Instaliran - Danas
+   
+   If DanaDoKraja <= 0 Then
+      MsgBox "Probna verzija programa lekarska ordinacija je istekla." & vbNewLine & _
+             "Imate mogucnost koriscenja programa jos ovaj put", vbInformation, "TM Soft Copyright Tel. (+381 11) 239 44 99"
+      SaveSetting appname:="XRay", Section:="X", _
+            Key:="X", setting:="14991439959999008"
+   End If
+            
+   Exit Function
+g:
+   MsgBox "Nepoznata greska" & vbNewLine & "Pozovite autora na (+381 11) 239 44 99", vbCritical, "TM Soft "
+   DoCmd.Quit
+End Function
+
+Function PostojiDocFile(ImeFajla As String) As Boolean
+   Dim Pom As String
+   Pom = CurrentProject.Path & "\Izvestaji\" & ImeFajla
+   If Len(Dir(Pom)) > 0 Then
+      PostojiDocFile = True
+   Else
+      PostojiDocFile = False
+   End If
+End Function
+
+Function presgod(g As Integer) As Boolean
+   Dim zdf As String
+   Dim pd As Date, pdm As Date
+   zdf = "2/28/" & g
+   pd = Format(zdf, "MM/dd/yyyy")
+   pdm = pd + 1
+   If Day(pdm) = 1 Then
+      presgod = False
+   Else
+      presgod = True
+   End If
+End Function
+
+Public Function KrajBre()
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "izlazak iz programa"
+   If DaNe Then
+      SaveSetting "LekOrd", "ColorShema", "AktivnaShema", CStr(TrenutnaShema)
+      DoCmd.Quit acQuitSaveAll
+   End If
+End Function
