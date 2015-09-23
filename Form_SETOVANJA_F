@@ -1,0 +1,48 @@
+Option Compare Database
+Option Explicit
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then
+      DaNe = False
+      DoCmd.Close acForm, "SETOVANJA_F"
+   End If
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+End Sub
+
+Private Sub Da_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Da.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Da_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+On Error GoTo g
+   If Button = acLeftButton Then
+         Me.ApsImePrograma = InputBox("Unesite aps. ime programa za Pregled", "Unos")
+         Me.Refresh
+      Da.SpecialEffect = acEffectRaised
+   End If
+   Exit Sub
+g:
+   If Err.Number <> 32755 Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+   End If
+End Sub
+
+Private Sub Ne_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Ne.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Ne_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+         Me.CaptureProgram = InputBox("Unesite aps. ime programa za Capture", "Unos") 'dlgCommon.FileName
+         Me.Refresh
+   End If
+   Ne.SpecialEffect = acEffectRaised
+End Sub
+
