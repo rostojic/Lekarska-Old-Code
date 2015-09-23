@@ -1,0 +1,326 @@
+Option Compare Database
+Option Explicit
+Dim Dodatak As String
+Dim m As String
+Dim sortPo As String
+Dim god As String
+
+Private Sub cboGodina_AfterUpdate()
+   Dim godina As Integer
+   godina = CInt(cboGodina)
+   god = PoGodini(godina)
+   PuniLbox
+   cboGodina = cboGodina
+End Sub
+
+Private Sub cboMesec_AfterUpdate()
+   Dim mes As Integer
+   mes = cboMesec.ListIndex + 1
+   If IsNull(cboGodina) Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Prethodno morate " & "." & "izabrati godinu"
+      cboMesec = Null
+      Exit Sub
+   End If
+   If cboGodina = Null Then
+      m = PoMesecu(mes, 2002)
+   Else
+      m = PoMesecu(mes, CInt(cboGodina))
+   End If
+   PuniLbox
+   cboMesec = cboMesec
+End Sub
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then DoCmd.Close
+End Sub
+Private Sub cmdClose_Click()
+On Error GoTo Err_cmdClose_Click
+
+    DoCmd.Close
+
+Exit_cmdClose_Click:
+    Exit Sub
+
+Err_cmdClose_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdClose_Click
+    
+End Sub
+
+Private Sub cmdDelete_Click()
+   Dim Broj As Long
+   Dim strSQL As String
+   On Error GoTo g
+   strSQL = "DELETE [03_PREGLEDI].[IDPoseta], [03_PREGLEDI].[IDPacijent], [03_PREGLEDI].[IDZaposleni], [03_PREGLEDI].[Izvestaj] " _
+        & "FROM 03_PREGLEDI " _
+        & "WHERE ((([03_PREGLEDI].[IDPacijent]) Is Null)) Or ((([03_PREGLEDI].[IDZaposleni]) Is Null)) Or ((([03_PREGLEDI].[Izvestaj]) Is Null));"
+
+   Dim r As Recordset
+   Set r = CurrentDb.OpenRecordset("Broj_Obrisanih_Q")
+   Broj = r.Fields(0).Value
+   r.Close
+   DoCmd.RunSQL strSQL
+   Me.Requery
+   Me.Refresh
+   'MsgBox "Uspesna akcija .."
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Broj nedodeljenih izvestaja" & "." & Broj
+   Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   DoCmd.Maximize
+   'cboGodina = Year(Date)
+   txtPacSeek.SetFocus
+   If Not IsNull(Me.OpenArgs) Then
+      Dodatak = "IDZaposleni=" & CInt(Me.OpenArgs) & " And "
+   End If
+   sortPo = " Order By PIIP, PIIL, Datum"
+End Sub
+
+Private Sub fraPacijent_AfterUpdate()
+   Dim Origin As String
+   If Me.fraPacijent.Value = 1 Then
+      Me.IDPacijent.ControlSource = "PIIP"
+      Me.IDZaposleni.ControlSource = "PIIL"
+      sortPo = " Order By PIIP, PIIL, Datum"
+   Else
+      Me.IDPacijent.ControlSource = "IIPP"
+      Me.IDZaposleni.ControlSource = "IIPL"
+      sortPo = " Order By IIPP, IIPL, Datum"
+   End If
+   'Origin = "Select * From Pregledi_Q " & SortPo
+   'Me.RecordSource = Origin
+   
+   PuniLbox
+   Me.Refresh
+   'MsgBox Me.RecordSource
+   
+End Sub
+
+Private Sub IDPacijent_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 13 Then
+      OtvoriPregled
+   End If
+End Sub
+
+Private Sub Izvestaj_DblClick(Cancel As Integer)
+    On Error GoTo greska
+    DoCmd.Hourglass True
+    'Dim w As New Word.Application
+    Dim w As Object
+    w = CreateObject("Word.Application")
+    w.Documents.Open CurrentProject.Path & "\Izvestaji\" & Me.Izvestaj, , True
+    w.Visible = True
+    DoCmd.Hourglass False
+    Exit Sub
+greska:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Nastala je greska" & "." & Err.Description
+End Sub
+Private Sub cmdFind_Click()
+On Error GoTo Err_cmdFind_Click
+
+   god = ""
+   m = PoMesecu(0, 2000)
+   
+   cboGodina = ""
+   cboMesec = ""
+   Reset_Input
+Exit_cmdFind_Click:
+    Exit Sub
+
+Err_cmdFind_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdFind_Click
+    
+End Sub
+
+Private Sub PuniLbox()
+    '  Create a WHERE clause using search criteria entered by user and
+    '  set RecordSource property of Lbox
+    On Error GoTo g
+    Dim mysql As String, MyCriteria As String, MyRecordSource As String, MyOrder As String
+    Dim ArgCount As Integer
+    Dim tmp As Variant
+    Dim Msg As String
+    
+    '  Initialize argument count.
+    ArgCount = 0
+    
+    '  Initialize SELECT statement.
+    If Not IsNull(Me.OpenArgs) Then
+      Dim Dodatak As String
+      Dodatak = " And IDZaposleni=" & CInt(Me.OpenArgs) & " "
+    Else
+      Dodatak = ""
+    End If
+    mysql = "SELECT * FROM PREGLEDI_Q WHERE "
+    
+    Me.Recalc
+    
+    '  Use values entered in text boxes in form header to create criteria for WHERE clause.
+    If Me.IDPacijent.ControlSource = "IIPP" Then
+      AddToWhere Me.txtPacSeek, "[IIPP]", MyCriteria, ArgCount
+    Else
+      AddToWhere Me.txtPacSeek, "[PIIP]", MyCriteria, ArgCount
+    End If
+    If Me.IDZaposleni.ControlSource = "IIPL" Then
+      AddToWhere Me.txtLekSeek, "[IIPL]", MyCriteria, ArgCount
+    Else
+      AddToWhere Me.txtLekSeek, "[PIIL]", MyCriteria, ArgCount
+    End If
+    
+    AddToWhere Me.txtDatSeek, "[Datum]", MyCriteria, ArgCount
+    AddToWhere Me.txtIzvestaj, "[Izvestaj]", MyCriteria, ArgCount
+    AddToWhere Me.txtBrojProtokola, "[BrojProtokola]", MyCriteria, ArgCount
+    
+    '  If no criterion specifed, return all records.
+    If MyCriteria = "" Then
+        MyCriteria = " 1=1 "
+    End If
+    
+    Me.RecordSource = mysql & MyCriteria & god & m & Dodatak & sortPo
+    Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+
+Function PoMesecu(Mesec As Integer, godina As Integer) As String
+   Dim kraj As Integer
+   Dim mysql As String
+   
+   If Mesec = 0 Then
+      PoMesecu = ""
+      Exit Function
+   End If
+   
+   Select Case Mesec
+      Case 1, 3, 5, 7, 8, 10, 12
+         kraj = 31
+      Case 4, 6, 9, 11
+         kraj = 30
+      Case 2
+         Dim zdf As String
+         Dim pd As Date, pdm As Date
+         zdf = "2/28/" & godina
+         pd = Format(zdf, "MM/dd/yyyy")
+         pdm = pd + 1
+         If Day(pdm) = 1 Then
+            kraj = 28
+         Else
+            kraj = 29
+         End If
+   End Select
+   PoMesecu = " and [Datum] >= #" & Mesec & "/1/" & godina & "#" & " And [Datum] <= " & "#" & Mesec & "/" & kraj & "/" & godina & "# "
+   'mysql = "SELECT * FROM PREGLEDI_Q WHERE " & Dodatak & "[Datum] >= #" & Mesec & "/1/" & Godina & "#" & " And [Datum] <= " & "#" & Mesec & "/" & kraj & "/" & Godina & "# Order By Datum, IIPP"
+   'MsgBox PoMesecu
+   'Me.RecordSource = mysql '& MyCriteria
+   
+End Function
+
+Function PoGodini(g As Integer) As String
+   Dim kraj As Integer
+   Dim mysql As String
+   
+   If g = 0 Then
+      PoGodini = ""
+      Exit Function
+   End If
+   PoGodini = " and [Datum] >= #1/1/" & g & "# And [Datum] <= #12/31/" & g & "# "
+   'mysql = "SELECT * FROM PREGLEDI_Q WHERE " & Dodatak & "[Datum] >= #" & Mesec & "/1/" & Godina & "#" & " And [Datum] <= " & "#" & Mesec & "/" & kraj & "/" & Godina & "# Order By Datum, IIPP"
+   'MsgBox PoMesecu
+   'Me.RecordSource = mysql '& MyCriteria
+   
+End Function
+
+
+
+Private Sub cmdPregledi_Click()
+    OtvoriPregled
+End Sub
+
+Sub OtvoriPregled()
+On Error GoTo Err_cmdPregledi_Click
+
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+
+    stDocName = "SLIKE_F"
+    
+    stLinkCriteria = "[IDPoseta]=" & Me![IDPoseta]
+    DoCmd.OpenForm stDocName, , , stLinkCriteria, , , "STARI"
+
+Exit_cmdPregledi_Click:
+    Exit Sub
+
+Err_cmdPregledi_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdPregledi_Click
+   
+End Sub
+
+
+Private Sub txtBrojProtokola_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtBrojProtokola
+End Sub
+
+Private Sub txtDatSeek_AfterUpdate()
+   On Error Resume Next
+   
+   PuniLbox
+  
+End Sub
+
+Private Sub txtDatSeek_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtDatSeek
+   
+End Sub
+
+Private Sub txtIzvestaj_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtIzvestaj
+
+End Sub
+
+Private Sub txtLekSeek_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtLekSeek
+
+End Sub
+
+Private Sub txtPacSeek_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtPacSeek
+   
+End Sub
+
+Sub Reset_Input()
+   txtIzvestaj = ""
+   txtPacSeek = ""
+   txtLekSeek = ""
+   txtDatSeek = ""
+   txtBrojProtokola = ""
+   
+   PuniLbox
+   
+   txtPacSeek.SetFocus
+End Sub
