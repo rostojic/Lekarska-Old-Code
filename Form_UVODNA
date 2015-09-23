@@ -1,0 +1,91 @@
+Option Compare Database
+
+Private Sub cmdKraj_Click()
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "izlazak iz programa"
+   If DaNe Then
+      SaveSetting "LekOrd", "ColorShema", "AktivnaShema", CStr(TrenutnaShema)
+      DoCmd.Quit acQuitSaveAll
+   End If
+End Sub
+
+Private Sub cmdUsluge_Click()
+   DoCmd.OpenForm "USLUGE_F"
+End Sub
+
+Private Sub cmdPacijenti_Click()
+   DoCmd.OpenForm "Pacijenti_f"
+End Sub
+
+Private Sub cmdZakazivanje_Click()
+   DoCmd.OpenForm "ZAKAZIVANJE_F"
+End Sub
+
+Private Sub cmdLekari_Click()
+   DoCmd.OpenForm "ZAPOSLENI_F"
+End Sub
+
+Private Sub cmdPosete_Click()
+   DoCmd.OpenForm "PREGLEDI_F"
+End Sub
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = vbKeyS Then
+      DoCmd.OpenForm "SETOVANJA_F", , , , , acDialog
+   End If
+End Sub
+
+Private Sub Form_Load()
+   Dim rs As Recordset
+   Set rs = CurrentDb.OpenRecordset("05_STARTUP")
+   Dim Registracija As String
+   
+   
+   If ProgramOtkljucan Then
+      Registracija = rs.Fields(0).Value
+      Demo.Caption = Registracija
+      Demo.ForeColor = vbBlack
+      Set rs = Nothing
+   Else
+      Demo.Caption = "Demo: dana do kraja " & DanaDoKraja
+   End If
+   Naslov.Caption = "Lekarska Ordinacija" & vbNewLine & "Verzija 2008"
+   'SenkaNaslova.Caption = Naslov.Caption
+   ColorShema TrenutnaShema, Me
+   DoCmd.Maximize
+   'Pokusavam da prebacim tastaturu
+   'HR 1050
+   'SR (latin) 2074
+   'SL 1060
+   Dim ValjaLiTastatura As Long '0 NE VALJA OSTALO OK
+   
+   ValjaLiTastatura = ActivateKeyboardLayout(2074, 0&)
+   If ValjaLiTastatura <> 0 Then
+        izabranLCID = 2074
+        Exit Sub
+   End If
+   
+   ValjaLiTastatura = ActivateKeyboardLayout(1050, 0&)
+   If ValjaLiTastatura <> 0 Then
+        izabranLCID = 1050
+        Exit Sub
+   End If
+   
+   ValjaLiTastatura = ActivateKeyboardLayout(1060, 0&)
+   If ValjaLiTastatura <> 0 Then
+        izabranLCID = 1060
+        Exit Sub
+   End If
+End Sub
+
+Private Sub Image3_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Image3.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Image3_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Image3.SpecialEffect = acEffectRaised
+      DoCmd.OpenForm "ABOUT"
+   End If
+End Sub
