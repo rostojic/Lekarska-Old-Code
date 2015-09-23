@@ -1,0 +1,380 @@
+Option Compare Database
+Option Explicit
+
+Dim Putanja As String
+Dim ImeDokumenta As String
+
+Dim Slike() As String
+
+
+Dim Softver As String
+Dim PutDoSlike As String
+Dim PutDoSnapa As String
+Dim FolderPacijenta As String
+'IME WORD TEMPLATE JE SADA UVEK PREGLED.DOT
+Dim ImeWordTemplata As String
+
+Sub NapuniOpstePromenljive()
+   Dim r As Recordset
+   Set r = CurrentDb.OpenRecordset("05_STARTUP")
+   Softver = r.Fields("CaptureProgram")
+   r.Close
+   PutDoSlike = Application.CurrentProject.Path & "\SLIKE"
+   PutDoSnapa = Application.CurrentProject.Path & "\SNAPSHOTS"
+   ImeWordTemplata = "PREGLED.DOT"
+End Sub
+
+Private Sub cmdProveriSnapshots_Click()
+   On Error GoTo g
+   
+   Dim r As Recordset
+   Set r = CurrentDb.OpenRecordset("05_STARTUP")
+   Dim ProgramZaGledanje As String
+   ProgramZaGledanje = r.Fields("ApsImePrograma")
+
+    Shell ProgramZaGledanje & " " & Chr(34) & CurrentProject.Path & _
+    "\Snapshots" & Chr(34), vbMaximizedFocus
+    
+   Exit Sub
+g:
+   MsgBox Err.Description
+   
+End Sub
+
+Private Sub cmdSnimiSliku_Click()
+   On Error GoTo greska
+   Shell Softver
+   Exit Sub
+greska:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Nemate odgovarajuci softver i/ili hardver" & "." & "Morate ga prethodno instalirati"
+End Sub
+
+Private Sub cmdVidi_Izv_Click()
+   If IsNull(Me.Izvestaj) Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Izvestaj ne postoji" & "." & "Morate ga prethodno kreirati"
+      cmdVidiIzv.SetFocus
+      Exit Sub
+   End If
+   
+   If Me.Izvestaj = "Bez izvestaja!!!" Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Izvestaj ne postoji" & "." & "Morate ga prethodno kreirati"
+      'cmdVidiIzv.SetFocus
+      Exit Sub
+   End If
+   OtvoriIzvestaj
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   Select Case Me.OpenArgs
+      Case "STARI"
+         SakrijDugmad
+      Case "NOVI"
+         OtkrijDugmad
+      Case "NOVI_ISTI_DAN"
+         OtkrijDugmad
+      Case "STARI_DOPUNA"
+         Me.Labela.Visible = True
+         Me.Zebra1.Visible = True
+         SakrijDugmad
+         Me.cmdVidi_Izv.Caption = "Dopuni ..."
+      Case Else
+         SakrijDugmad
+   End Select
+   NapuniOpstePromenljive
+   If IsNull(Me.Izvestaj) Then
+      Me.cmdVidi_Izv.Enabled = False
+   End If
+   DoCmd.Maximize
+End Sub
+
+Sub SakrijDugmad()
+   Me.cmdSlikaAdd.Enabled = False
+   Me.cmdSnimiSliku.Enabled = False
+   Me.cmdVidiIzv.Enabled = False
+End Sub
+
+Sub OtkrijDugmad()
+   Me.cmdSlikaAdd.Enabled = True
+   Me.cmdSnimiSliku.Enabled = True
+   Me.cmdVidiIzv.Enabled = True
+End Sub
+
+Private Sub cmdSlikaAdd_Click()
+   On Error GoTo g
+   
+   If DodajSlike Then
+        Me.cmdClose.SetFocus
+        Me.cmdSlikaAdd.Enabled = False
+   End If
+   
+   Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+Private Sub cmdClose_Click()
+On Error GoTo Err_cmdClose_Click
+    If IsNull(Me.Izvestaj) Then
+        DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Niste kreirali izvestaj" & "." & "Vratite se na formu"
+        Me.cmdVidiIzv.SetFocus
+        Exit Sub
+    End If
+    DoCmd.Close
+
+Exit_cmdClose_Click:
+    Exit Sub
+
+Err_cmdClose_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdClose_Click
+    
+End Sub
+
+'Ovo je ono VELIKO GLAVNO dugme u futeru
+Private Sub cmdVidiIzv_Click()
+    
+    On Error GoTo g
+    DoCmd.Hourglass True
+    
+    FormirajIzvestaj
+      
+    Me.cmdClose.SetFocus
+    Me.cmdVidiIzv.Enabled = False
+    DoCmd.Hourglass False
+    Exit Sub
+g:
+   DoCmd.Hourglass False
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Nastala je greska" & "." & Err.Description
+End Sub
+
+Private Sub OtvoriIzvestaj()
+   On Error GoTo greska
+   DoCmd.Hourglass True
+   'Dim w As New Word.Application
+   Dim w As Object
+   Set w = CreateObject("Word.Application")
+   Select Case Me.OpenArgs
+      Case "STARI"
+         w.Documents.Open CurrentProject.Path & "\Izvestaji\" & Me.Izvestaj, , False
+      Case "STARI_DOPUNA", "NOVI", "NOVI_ISTI_DAN"
+         w.Documents.Open CurrentProject.Path & "\Izvestaji\" & Me.Izvestaj, , False
+   End Select
+   
+   w.Visible = True
+   w.Activate
+   DoCmd.Hourglass False
+   Exit Sub
+greska:
+   DoCmd.Hourglass False
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Nastala je greska" & "." & Err.Description
+
+End Sub
+
+Private Sub FormirajIzvestaj()
+   On Error GoTo g
+   'Dim w As New Word.Application
+   'Dim d As Word.Document
+   'Dim r As Word.Range
+   'Dim r_dole As Word.Range
+   
+   Dim w 'As New Word.Application
+   Dim d 'As Word.Document
+   Dim r 'As Word.Range
+   Dim r_dole 'As Word.Range
+   
+   
+   Set w = CreateObject("Word.Application")
+   Dim FolderIzv As String
+   
+   Putanja = CurrentProject.Path & "\Izvestaji" & "\" & ImeWordTemplata
+   
+   Set d = w.Documents.Add(Putanja)
+   Set r = d.Sections(1).Headers(wdHeaderFooterFirstPage).Range
+   Set r_dole = d.Sections(1).Footers(wdHeaderFooterFirstPage).Range
+   
+   'Pacijent
+   r.Find.Execute FIndtext:="pii", ReplaceWith:=CStr(Me.IIPP), _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+   
+   'Adresa
+   r.Find.Execute FIndtext:="aaa", ReplaceWith:=IIf(IsNull(Me.Adresa), "", Me.Adresa), _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+      
+   'Telefon
+   r.Find.Execute FIndtext:="ttt", ReplaceWith:=IIf(IsNull(Me.Telefon), "", Me.Telefon), _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+      
+   'Lekar
+   r_dole.Find.Execute FIndtext:="lss", ReplaceWith:=Me.Zvanje & " " & Me.IIPL, _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+   
+   'Datum
+   r.Find.Execute FIndtext:="ddd", ReplaceWith:=CStr(Format(Date, "dd.mm.yyyy")), _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+   
+   'Datum rodjenja
+   r.Find.Execute FIndtext:="drr", ReplaceWith:=IIf(IsNull(Me.DatumRodj), "", Format(Me.DatumRodj, "dd.mm.yyyy")), _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+   
+   'Protokol - broj posete
+   r.Find.Execute FIndtext:="bpp", ReplaceWith:=IIf(IsNull(Me.BrojProtokola), "", Me.BrojProtokola), _
+   Replace:=wdReplaceAll, MatchWholeWord:=True
+      
+   'Vreme
+   'r.Find.Execute FIndtext:="V", ReplaceWith:=CStr(Format(Now, "Short Time")), _
+   'Replace:=wdReplaceAll, MatchWholeWord:=True
+   
+   FolderIzv = CurrentProject.Path & "\Izvestaji"
+   
+   '*****************************************************************
+   '-----------ImeDokumenta-----------
+   ImeDokumenta = Format(Me.IDPacijent, "0000") & "_" & _
+                  Format(Me.IDZaposleni, "0000") & "_" & _
+                  Format(Date, "yyyy-mm-dd") & ".DOC"
+   If Me.OpenArgs = "NOVI_ISTI_DAN" Then
+      ImeDokumenta = Format(Me.IDPacijent, "0000") & "_" & _
+                     Format(Me.IDZaposleni, "0000") & "_" & _
+                     Format(Date, "yyyy-mm-dd") & "_" & Me.IDPoseta & ".DOC"
+      
+   End If
+   '*****************************************************************
+   d.SaveAs FolderIzv & "\" & ImeDokumenta
+   w.Visible = True
+   Me.Izvestaj = ImeDokumenta
+   Me.cmdVidi_Izv.Enabled = True
+   'lblSN.Caption = "Pogledaj izvestaj"
+   Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+
+
+'Private Sub FormirajIzvestaj()
+'   On Error GoTo g
+'   Dim w As New Word.Application
+'   Dim d As Word.Document
+'   Dim r As Word.Range
+'   Dim FolderIzv As String
+'
+'   Putanja = CurrentProject.Path & "\Izvestaji" & "\ANIMA.DOT"
+'
+'   Set d = w.Documents.Add(Putanja)
+'   Set r = d.Sections(1).Headers(wdHeaderFooterFirstPage).Range
+'
+'   'Pacijent
+'   r.Find.Execute FIndtext:="PI", ReplaceWith:=CStr(Me.IIPP), _
+'   Replace:=wdReplaceAll, MatchWholeWord:=True
+'
+'   'Lekar
+'   r.Find.Execute FIndtext:="LS", ReplaceWith:=Me.Zvanje & " " & CStr(Me.IIPL), _
+'   Replace:=wdReplaceAll, MatchWholeWord:=True
+'
+'   'Datum
+'   r.Find.Execute FIndtext:="D", ReplaceWith:=CStr(Format(Date, "yyyy-mm-dd")), _
+'   Replace:=wdReplaceAll, MatchWholeWord:=True
+'
+'   'Vreme
+'   r.Find.Execute FIndtext:="V", ReplaceWith:=CStr(Format(Now, "Short Time")), _
+'   Replace:=wdReplaceAll, MatchWholeWord:=True
+'
+'   FolderIzv = CurrentProject.Path & "\Izvestaji"
+'
+'   '*****************************************************************
+'   '-----------ImeDokumenta-----------
+'   ImeDokumenta = CStr(Me.IDPacijent) & "_" & _
+'                  CStr(Me.IDZaposleni) & "_" & _
+'                  CStr(Format(Date, "yyyy-mm-dd")) & ".DOC"
+'   If Me.OpenArgs = "NOVI_ISTI_DAN" Then
+'      ImeDokumenta = CStr(Me.IDPacijent) & "_" & _
+'                     CStr(Me.IDZaposleni) & "_" & _
+'                     CStr(Format(Date, "yyyy-mm-dd")) & "_" & Me.IDPoseta & ".DOC"
+'
+'   End If
+'   '*****************************************************************
+'
+'
+'   'OVDE POLJE U BAZI DOBIJA VREDNOST
+'   '***********************************
+'   Me.Izvestaj = ImeDokumenta
+'   '**********************************
+'   Me.cmdVidi_Izv.Enabled = True
+'   d.SaveAs FolderIzv & "\" & ImeDokumenta
+'
+'   w.Visible = True
+'   w.Activate
+'   Exit Sub
+'g:
+'   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+'End Sub
+
+
+
+
+Function DodajSlike() As Boolean
+   On Error GoTo g
+   
+   Dim BrojacSlika As Long
+   Dim PrviFile As String
+   Dim i As Long
+   Dim fso As New FileSystemObject
+   
+   PrviFile = Dir(PutDoSnapa & "\" & Mustra)
+   
+   If Len(PrviFile) = 0 Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Radni direktorij " & PutDoSnapa & "." & "je prazan"
+      DodajSlike = False
+      Exit Function
+   Else
+      ReDim Slike(40)
+      'Slike(0) = PrviFile
+   End If
+   
+   FolderPacijenta = Format(IDPacijent, "00000#")
+   While Len(PrviFile) > 0
+      Slike(BrojacSlika) = PrviFile
+      BrojacSlika = BrojacSlika + 1
+      PrviFile = Dir
+   Wend
+   
+   Dim rsSlike As Recordset
+   Dim NovoIme As String
+   
+    If Len(Dir(PutDoSlike & "\" & FolderPacijenta, vbDirectory)) = 0 Then
+          Call fso.CreateFolder(PutDoSlike & "\" & FolderPacijenta)
+    End If
+   
+   For i = 0 To BrojacSlika - 1
+      Set rsSlike = CurrentDb.OpenRecordset("04_SLIKE")
+      rsSlike.AddNew
+      
+      NovoIme = CStr(Me.IDPacijent) & "_" & _
+                 CStr(Me.IDZaposleni) & "_" & _
+                 CStr(Format(Date, "yyyy-mm-dd")) & "_" & _
+                 Format(i, "00") & Mid(Mustra, 2)
+      
+      
+      fso.MoveFile PutDoSnapa & "\" & Slike(i), PutDoSlike & "\" & FolderPacijenta & "\" & NovoIme
+                  
+      rsSlike.Fields(1) = Me.IDPoseta
+      rsSlike.Fields(2) = NovoIme
+      rsSlike.Update
+   Next i
+   rsSlike.Close
+   Me.SLIKE_SUB_F.Form.Refresh
+   Me.Refresh
+   'Proveriti ovu liniju kasnije ...
+   If Len(Dir(PutDoSnapa & "\" & "*.Thumb")) > 0 Then
+      fso.DeleteFile PutDoSnapa & "\" & "*.Thumb", True
+   End If
+   DodajSlike = True
+   Exit Function
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Nastala je greska" & "." & Err.Description
+   DodajSlike = False
+End Function
+
+Private Sub Form_Unload(Cancel As Integer)
+   If IsNull(Me.Izvestaj) Then
+      Cancel = -1
+   End If
+End Sub
