@@ -1,0 +1,47 @@
+Option Compare Database
+Option Explicit
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then
+      DaNe = False
+      DoCmd.Close acForm, "MSGBOX_F"
+   End If
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   If Not IsNull(Me.OpenArgs) Then
+      parsiraj OpenArgs
+   End If
+End Sub
+
+Sub parsiraj(s As String)
+   'Prvo ide brojpacijenata, pa slovo "z", pa broj lekara
+   Me.Akcija.Caption = OpenArgs
+End Sub
+
+Private Sub Da_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Da.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Da_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      DaNe = True
+      DoCmd.Close
+   End If
+End Sub
+
+Private Sub Ne_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Ne.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Ne_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      DaNe = False
+      DoCmd.Close
+   End If
+End Sub
