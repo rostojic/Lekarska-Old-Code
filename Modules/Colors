@@ -1,0 +1,174 @@
+Option Explicit
+
+Public Type Shema
+   HederFooter As Long
+   Detalj As Long
+   Zebra0 As Long
+   Zebra1 As Long
+End Type
+
+Public StaraShema As Long
+Public KorisnikPreskocioStartUp As Long
+Public TrenutnaShema As Long
+Public VrsteShema() As Shema
+
+'OVO JE BUKVALNO PRVA STVAR KOJA SE IZVRSI
+
+Function NapuniSheme()
+   Dim i As Long
+   ReDim VrsteShema(10)
+   'Setujem globalnu promenljivu da vidim da li Startup ODRADJEN!!!
+   KorisnikPreskocioStartUp = 100
+   
+  
+   'Inicijalno punjenje shema i citanje rigistry baze
+   TrenutnaShema = GetSetting("LekOrd", "ColorShema", "AktivnaShema", 3)
+   CBCtlToggleEnabled TrenutnaShema
+   For i = 0 To 10
+      Select Case i
+         
+         Case 0
+         'Default
+            VrsteShema(0).Detalj = 11256000
+            VrsteShema(0).HederFooter = 8758178
+            VrsteShema(0).Zebra0 = 8764348
+            VrsteShema(0).Zebra1 = 12900825
+         Case 1
+         'Beige
+            VrsteShema(1).Detalj = RGB(&HF5, &HDE, &HB3) 'F5DEB3
+            VrsteShema(1).HederFooter = RGB(&HDE, &HB8, &H87)
+            VrsteShema(1).Zebra0 = RGB(&HF5, &HF5, &HDC)
+            VrsteShema(1).Zebra1 = RGB(&HFF, &HE4, &HC4)
+         Case 2
+         'Aqua
+            VrsteShema(2).Detalj = RGB(&H87, &HCE, &HEB)
+            VrsteShema(2).HederFooter = RGB(&H46, &H82, &HB4)
+            VrsteShema(2).Zebra0 = RGB(&HB0, &HE0, &HE6)
+            VrsteShema(2).Zebra1 = RGB(&HB0, &HC4, &HDE)
+         Case 3
+         'Silver
+            VrsteShema(3).Detalj = RGB(&HC0, &HC0, &HC0) 'cococo
+            VrsteShema(3).HederFooter = RGB(&H70, &H80, &H90)
+            VrsteShema(3).Zebra0 = RGB(&HAF, &HEE, &HEE)
+            VrsteShema(3).Zebra1 = RGB(&HFF, &HF5, &HEE)
+         Case 4
+         'Lavender
+            VrsteShema(4).Detalj = 14073024
+            VrsteShema(4).HederFooter = 12358811
+            VrsteShema(4).Zebra0 = 10973305
+            VrsteShema(4).Zebra1 = 14864338
+         
+         Case 5
+         
+         'Green
+            VrsteShema(5).Detalj = 10660492
+            VrsteShema(5).HederFooter = 8491625
+            VrsteShema(5).Zebra0 = 12896694
+            VrsteShema(5).Zebra1 = 11387053
+         Case 6
+         'Sara
+            VrsteShema(6).Detalj = 11182257
+            VrsteShema(6).HederFooter = 8878738
+            VrsteShema(6).Zebra0 = 7498639
+            VrsteShema(6).Zebra1 = 11907525
+         Case 7
+         'Olivera
+            VrsteShema(7).Detalj = 12434071
+            VrsteShema(7).HederFooter = 9078359
+            VrsteShema(7).Zebra0 = 10788721
+            VrsteShema(7).Zebra1 = 14013117
+         Case 8
+'         'Eart
+'            VrsteShema(8).Detalj = 11583694
+'            VrsteShema(8).HederFooter = 8559539
+'            VrsteShema(8).Zebra0 = 5598596
+'            VrsteShema(8).Zebra1 = 13292509
+''
+            VrsteShema(8).Detalj = 12632256
+            VrsteShema(8).HederFooter = 10790052
+            VrsteShema(8).Zebra0 = 13816530
+            VrsteShema(8).Zebra1 = 13816530
+
+         Case 9
+         'xp
+            VrsteShema(9).Detalj = RGB(216, 228, 248) '14207665
+            VrsteShema(9).HederFooter = RGB(122, 150, 223) '13351322
+            VrsteShema(9).Zebra0 = RGB(157, 185, 235) '12033395
+            VrsteShema(9).Zebra1 = RGB(216, 228, 248) '14866631
+         End Select
+   Next i
+   If RefreshLinks(Application.CurrentProject.Path & "\Tabele\Tabele.accdb") = False Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska prilikom otvaranja" & "." & "Ne postoji file " & Application.CurrentProject.Path & "\Tabele\Tabele.accdb"
+      DoCmd.Quit
+   End If
+   
+End Function
+
+'U ovu funkciju dodati sve zabrane, zato sto se poziva kod dizanja svih formi
+Sub ColorShema(Broj As Long, forma As Form)
+   '0 detalj
+   '1 heder
+   '2 footer
+   If KorisnikPreskocioStartUp <> 100 Then DoCmd.Quit
+   forma.Section(0).BackColor = VrsteShema(Broj).Detalj
+   forma.Section(1).BackColor = VrsteShema(Broj).HederFooter
+   forma.Section(2).BackColor = VrsteShema(Broj).HederFooter
+   Dim ctl As Control
+   For Each ctl In forma.Controls
+      If ctl.ControlType = acRectangle Then
+         If Mid(ctl.Name, 1, 6) = "Zebra0" Then
+            ctl.BackColor = VrsteShema(Broj).Zebra0
+         End If
+         If Mid(ctl.Name, 1, 6) = "Zebra1" Then
+            ctl.BackColor = VrsteShema(Broj).Zebra1
+         End If
+         If Mid(ctl.Name, 1, 3) = "Box" Then
+            ctl.BackColor = VrsteShema(Broj).HederFooter
+         End If
+      End If
+      If ctl.ControlType = acListBox Then
+         ctl.BackColor = VrsteShema(Broj).HederFooter
+      End If
+      If ctl.ControlType = acComboBox Then
+         ctl.BackColor = VrsteShema(Broj).Zebra1
+      End If
+   Next
+   
+End Sub
+
+Public Function PrimeniShemu(B As Long)
+   Dim f As Form
+   StaraShema = TrenutnaShema
+   TrenutnaShema = B
+   CBCtlToggleEnabled B
+   For Each f In Application.Forms
+      ColorShema TrenutnaShema, f
+   Next
+End Function
+
+Function CBCtlToggleEnabled(Boja As Long) As Boolean
+    
+    Dim ctlCBarControl
+    Dim NoviIzabrani
+    NoviIzabrani = Boja + 1
+    
+    Dim c
+    
+    On Error Resume Next
+    
+    Set ctlCBarControl = Application.CommandBars("LekOrdNew").Controls("Skins").Controls(NoviIzabrani)
+    
+    'Prvo ih sve diseblujem
+    For Each c In Application.CommandBars("LekOrdNew").Controls("Skins").Controls
+      c.State = False
+    Next
+    'A onda setujem pravu!!!
+    ctlCBarControl.State = True
+    
+    If Err = 0 Then
+        CBCtlToggleEnabled = True
+    Else
+        CBCtlToggleEnabled = False
+    End If
+End Function
+
