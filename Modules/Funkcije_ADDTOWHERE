@@ -1,0 +1,19 @@
+Option Compare Database
+'Option Explicit
+
+Public Function AddToWhere(FieldValue As Variant, FieldName As String, MyCriteria As String, ArgCount As Integer)
+    '  Create criteria for WHERE clause.
+    If FieldValue <> "" Then
+        '  Add "and" if other criterion exists.
+        If ArgCount > 0 Then
+            MyCriteria = MyCriteria & " and "
+        End If
+        '  Append criterion to existing criteria.
+        '  Enclose FieldValue and asterisk in quotation marks.
+        MyCriteria = (MyCriteria & FieldName & " Like " & Chr(39) & FieldValue & Chr(42) & Chr(39))
+        NaslovIzvestaj = NaslovIzvestaj & "  " & FieldValue & Chr(59)
+        '  Increase argument count.
+        ArgCount = ArgCount + 1
+    End If
+End Function
+
