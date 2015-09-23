@@ -1,0 +1,149 @@
+Option Compare Database
+Option Explicit
+Dim gdesamstao
+Sub ZakjucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl.Locked = True
+      End If
+      If ctl.ControlType = acOptionGroup And ctl.Name <> "fraIzborPretrage" Then
+         ctl.Locked = True
+      End If
+   Next
+End Sub
+
+Sub OtkljucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl.Locked = False
+      End If
+      If ctl.ControlType = acOptionGroup Then
+         ctl.Locked = False
+      End If
+
+   Next
+End Sub
+
+Private Sub cmdAdd_Click()
+On Error GoTo Err_cmdAdd_Click
+    Dim rs As Recordset
+    DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Nova vrsta pregleda"
+    If DaNe = False Then Exit Sub
+    
+    Me.Specijalnost.Locked = False
+    Me.Specijalnost.Enabled = True
+    Me.AllowAdditions = True
+    
+    Set rs = Me.Recordset
+    If Not (rs.BOF And rs.EOF) Then
+      gdesamstao = Me.Bookmark
+    End If
+    
+    OtkljucajTextPolja
+    DoCmd.GoToRecord , , acNewRec
+    
+    cmdSave.Visible = True
+    cmdUndo.Visible = True
+         
+    cmdSave.SetFocus
+         
+   cmdAdd.Visible = False
+    tglKatanac.Visible = False
+    Me.Specijalnost.SetFocus
+Exit_cmdAdd_Click:
+    Exit Sub
+
+Err_cmdAdd_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdAdd_Click
+    
+End Sub
+
+Private Sub cmdClose_Click()
+   DoCmd.Close
+End Sub
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then DoCmd.Close
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   ZakjucajTextPolja
+End Sub
+
+Private Sub tglKatanac_Click()
+   If tglKatanac = True Then
+      OtkljucajTextPolja
+   Else
+      ZakjucajTextPolja
+   End If
+End Sub
+
+Private Sub cmdSave_Click()
+On Error GoTo Err_cmdSave_Click
+      
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "snimanje"
+   If DaNe Then
+      
+      DoCmd.DoMenuItem acFormBar, acRecordsMenu, acSaveRecord, , acMenuVer70
+
+      ZakjucajTextPolja
+      Me.AllowAdditions = False
+
+    cmdAdd.Visible = True
+    tglKatanac.Visible = True
+    
+    cmdClose.SetFocus
+    
+   cmdUndo.Visible = False
+   cmdSave.Visible = False
+    Me.Specijalnost.Locked = True
+    Me.Specijalnost.Enabled = False
+
+
+   End If
+Exit_cmdSave_Click:
+    Exit Sub
+
+Err_cmdSave_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdSave_Click
+    
+End Sub
+
+Private Sub cmdUndo_Click()
+   On Error Resume Next
+     
+   DoCmd.DoMenuItem acFormBar, acEditMenu, acUndo, , acMenuVer70
+
+   Me.Bookmark = gdesamstao
+   IsprazniPolja
+   ZakjucajTextPolja
+   
+    
+   Me.AllowAdditions = False
+   Me.Specijalnost.Locked = True
+    Me.Specijalnost.Enabled = False
+    cmdAdd.Visible = True
+    tglKatanac.Visible = True
+    
+    cmdAdd.SetFocus
+   cmdSave.Visible = False
+   cmdUndo.Visible = False
+   
+End Sub
+
+Sub IsprazniPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl = ""
+      End If
+   Next
+End Sub
+
+
+
