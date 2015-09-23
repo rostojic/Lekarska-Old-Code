@@ -1,0 +1,29 @@
+Option Compare Database
+Option Explicit
+'Funkcija dodana zbog loseg ponasanja Format(d,"MM/dd/yyyy")
+Public Function DiDi(d As Date)
+      Dim dan
+      Dim Mesec
+      Dim godina
+      
+      dan = Day(d)
+      Mesec = Month(d)
+      godina = Year(d)
+   
+   DiDi = "#" & Mesec & "/" & dan & "/" & godina & "#"
+End Function
+
+Public Sub PostaviDatum(d As Date)
+Dim sql As String
+   
+sql = "SELECT [06_ZAKAZIVANJE].Datum, [06_ZAKAZIVANJE].Vreme, [06_ZAKAZIVANJE].IIP as Pacijent, " & _
+    "[02_ZAPOSLENI]![Prezime] & ' ' & [02_ZAPOSLENI]![ime] AS Lekar " & _
+    "FROM 02_ZAPOSLENI INNER JOIN 06_ZAKAZIVANJE ON [02_ZAPOSLENI].IDZaposleni = [06_ZAKAZIVANJE].IDZaposleni " & _
+    "WHERE ((([06_ZAKAZIVANJE].Datum) = " & DiDi(d) & ")) " & _
+    "ORDER BY [06_ZAKAZIVANJE].Vreme; "
+   
+   CurrentDb.QueryDefs("ZAKAZANI_Q").sql = sql
+  
+End Sub
+
+
