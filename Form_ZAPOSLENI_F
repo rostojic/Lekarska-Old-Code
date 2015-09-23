@@ -1,0 +1,271 @@
+Option Compare Database
+
+Dim gdesamstao As String
+Dim ImeDokumenta As String
+Dim FolderIzv As String
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+   If KeyCode = vbKeyF3 Then DoCmd.OpenForm "SEARCHLEKARA_F"
+End Sub
+
+'Private Sub Form_KeyPress(KeyAscii As Integer)
+'   If KeyAscii = 27 Then DoCmd.Close
+'End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   DoCmd.Maximize
+   ZakjucajTextPolja
+End Sub
+
+Private Sub Form_Unload(Cancel As Integer)
+   If IsNull(Me.Ime) Or IsNull(Me.Prezime) _
+      Or Me.Specijalnost = 0 Or IsNull(Me.Zvanje) Then
+      Dim Poruka As String, Nastavak As String
+      Poruka = "Neophodni podaci o zaposlenom su:"
+      Nastavak = "ime, prezime " & _
+             "specijalnost i zvanje!"
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, Poruka & "." & Nastavak
+      Cancel = True
+      Exit Sub
+   End If
+   
+   ZakjucajTextPolja
+   Me.tglKatanac = False
+End Sub
+
+Private Sub FormHeader_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acRightButton Then
+      DoCmd.OpenForm "SearchLekara_F"
+   End If
+End Sub
+
+
+Private Sub cmdAdd_Click()
+On Error GoTo Err_cmdAdd_Click
+    Dim rs As Recordset
+    DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Unos novog kosultanta - lekara"
+    If Not DaNe Then Exit Sub
+    Me.AllowAdditions = True
+    
+    Set rs = Me.Recordset
+    If Not (rs.BOF And rs.EOF) Then
+      gdesamstao = Me.Bookmark
+    End If
+    
+    OtkljucajTextPolja
+    Me.Tab.Visible = True
+    DoCmd.GoToRecord , , acNewRec
+
+    Me.Ime.SetFocus
+    
+    cmdPrvi.Visible = False
+    cmdPrethodni.Visible = False
+    cmdSledeci.Visible = False
+    cmdZadnji.Visible = False
+    cmdAdd.Visible = False
+    tglKatanac.Visible = False
+    
+    cmdSave.Visible = True
+    cmdUndo.Visible = True
+Exit_cmdAdd_Click:
+    Exit Sub
+
+Err_cmdAdd_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdAdd_Click
+    
+End Sub
+
+Private Sub cmdClose_Click()
+On Error GoTo Err_cmdClose_Click
+
+   If IsNull(Me.Ime) Or IsNull(Me.Prezime) _
+      Or Me.Specijalnost = 0 Or IsNull(Me.Zvanje) Then
+      Dim Poruka As String, Nastavak As String
+      Poruka = "Neophodni podaci o zaposlenom su:"
+      Nastavak = "ime, prezime " & _
+             "specijalnost i zvanje!"
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, Poruka & "." & Nastavak
+      Exit Sub
+   End If
+   
+   DoCmd.Close
+
+Exit_cmdClose_Click:
+    Exit Sub
+
+Err_cmdClose_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdClose_Click
+    
+End Sub
+
+Sub ZakjucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Or ctl.ControlType = acComboBox Then
+         ctl.Locked = True
+      End If
+      If ctl.ControlType = acOptionGroup And ctl.Name <> "fraIzborPretrage" Then
+         ctl.Locked = True
+      End If
+   Next
+   
+End Sub
+
+Sub OtkljucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Or ctl.ControlType = acComboBox Then
+         ctl.Locked = False
+      End If
+      If ctl.ControlType = acOptionGroup Then
+         ctl.Locked = False
+      End If
+
+   Next
+   txtImeiPrezime.Locked = True
+End Sub
+
+Private Sub lblPregledi_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   lblPregledi.SpecialEffect = acEffectRaised
+End Sub
+
+Private Sub Form_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   lblPregledi.SpecialEffect = acEffectNormal
+End Sub
+
+Private Sub lblPregledi_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      lblPregledi.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Tab_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   lblPregledi.SpecialEffect = acEffectNormal
+End Sub
+
+Private Sub lblPregledi_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   On Error GoTo Err_cmdLekarIzvestaj_Click
+
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+
+    stDocName = "PREGLEDI_F"
+
+    stLinkCriteria = "[IDZaposleni]= " & Me.IDZaposleni
+    DoCmd.OpenForm stDocName, , , stLinkCriteria, , , Me.IDZaposleni
+    lblPregledi.SpecialEffect = acEffectNormal
+Exit_cmdLekarIzvestaj_Click:
+    Exit Sub
+
+Err_cmdLekarIzvestaj_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdLekarIzvestaj_Click
+
+End Sub
+
+
+
+Private Sub tglKatanac_Click()
+   If tglKatanac = True Then
+      OtkljucajTextPolja
+      'tglKatanac.ControlTipText = "Zakljucaj"
+   Else
+      ZakjucajTextPolja
+      'tglKatanac.ControlTipText = "Otkljucaj"
+   End If
+End Sub
+
+Private Sub cmdSave_Click()
+On Error GoTo Err_cmdSave_Click
+      
+   If IsNull(Me.Ime) Or IsNull(Me.Prezime) _
+      Or Me.Specijalnost = 0 Or IsNull(Me.Zvanje) Then
+      Dim Poruka As String, Nastavak As String
+      Poruka = "Neophodni podaci o zaposlenom su:"
+      Nastavak = "ime, prezime " & _
+             "specijalnost i zvanje!"
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, Poruka & "." & Nastavak
+      Exit Sub
+   End If
+      
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "snimanje novog lekara"
+   If DaNe Then
+      
+      DoCmd.DoMenuItem acFormBar, acRecordsMenu, acSaveRecord, , acMenuVer70
+
+      ZakjucajTextPolja
+      Me.AllowAdditions = False
+      cmdPrethodni.Visible = True
+      cmdPrethodni.SetFocus
+
+    cmdPrvi.Visible = True
+    cmdSledeci.Visible = True
+    cmdZadnji.Visible = True
+    cmdAdd.Visible = True
+    tglKatanac.Visible = True
+
+      cmdUndo.Visible = False
+      cmdSave.Visible = False
+
+
+   End If
+Exit_cmdSave_Click:
+    Exit Sub
+
+Err_cmdSave_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdSave_Click
+    
+End Sub
+
+Private Sub cmdUndo_Click()
+   On Error Resume Next
+    
+   DoCmd.DoMenuItem acFormBar, acEditMenu, acUndo, , acMenuVer70
+   
+   Me.Bookmark = gdesamstao
+   IsprazniPolja
+   ZakjucajTextPolja
+   cmdPrvi.Visible = True
+   cmdPrvi.SetFocus
+   cmdSave.Visible = False
+   cmdUndo.Visible = False
+   Me.AllowAdditions = False
+   
+   cmdPrethodni.Visible = True
+   cmdSledeci.Visible = True
+   cmdZadnji.Visible = True
+   cmdAdd.Visible = True
+   tglKatanac.Visible = True
+   
+End Sub
+
+Sub IsprazniPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl = ""
+      End If
+   Next
+End Sub
+Private Sub cmdPrvi_Click()
+On Error Resume Next
+    DoCmd.GoToRecord , , acFirst
+End Sub
+
+Private Sub cmdPrethodni_Click()
+On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+End Sub
+Private Sub cmdSledeci_Click()
+   On Error Resume Next
+   DoCmd.GoToRecord , , acNext
+End Sub
+Private Sub cmdZadnji_Click()
+   On Error Resume Next
+   DoCmd.GoToRecord , , acLast
+End Sub
+
