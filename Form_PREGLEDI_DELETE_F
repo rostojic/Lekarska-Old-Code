@@ -1,0 +1,171 @@
+Option Compare Database
+Option Explicit
+Dim Dodatak As String
+Dim sortPo As String
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then DoCmd.Close
+End Sub
+
+Private Sub cmdClose_Click()
+On Error GoTo Err_cmdClose_Click
+
+    DoCmd.Close
+
+Exit_cmdClose_Click:
+    Exit Sub
+
+Err_cmdClose_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdClose_Click
+    
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   DoCmd.Maximize
+   'cboGodina = Year(Date)
+   txtPacSeek.SetFocus
+   If Not IsNull(Me.OpenArgs) Then
+      Dodatak = "IDZaposleni=" & CInt(Me.OpenArgs) & " And "
+   End If
+   sortPo = " Order By PIIP, PIIL, Datum"
+End Sub
+
+Private Sub IDPacijent_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 13 Then
+      'OtvoriPregled
+   End If
+End Sub
+
+Private Sub PuniLbox()
+    '  Create a WHERE clause using search criteria entered by user and
+    '  set RecordSource property of Lbox
+    On Error GoTo g
+    Dim mysql As String, MyCriteria As String, MyRecordSource As String, MyOrder As String
+    Dim ArgCount As Integer
+    Dim tmp As Variant
+    Dim Msg As String
+    
+    '  Initialize argument count.
+    ArgCount = 0
+    
+    '  Initialize SELECT statement.
+    If Not IsNull(Me.OpenArgs) Then
+      Dim Dodatak As String
+      Dodatak = " And IDZaposleni=" & CInt(Me.OpenArgs) & " "
+    Else
+      Dodatak = ""
+    End If
+    mysql = "SELECT * FROM PREGLEDI_Q WHERE "
+    
+    Me.Recalc
+    
+    '  Use values entered in text boxes in form header to create criteria for WHERE clause.
+    If Me.IDPacijent.ControlSource = "IIPP" Then
+      AddToWhere Me.txtPacSeek, "[IIPP]", MyCriteria, ArgCount
+    Else
+      AddToWhere Me.txtPacSeek, "[PIIP]", MyCriteria, ArgCount
+    End If
+    If Me.IDZaposleni.ControlSource = "IIPL" Then
+      AddToWhere Me.txtLekSeek, "[IIPL]", MyCriteria, ArgCount
+    Else
+      AddToWhere Me.txtLekSeek, "[PIIL]", MyCriteria, ArgCount
+    End If
+    
+    AddToWhere Me.txtDatSeek, "[Datum]", MyCriteria, ArgCount
+    AddToWhere Me.txtIzvestaj, "[Izvestaj]", MyCriteria, ArgCount
+    
+    '  If no criterion specifed, return all records.
+    If MyCriteria = "" Then
+        MyCriteria = " 1=1 "
+    End If
+    
+    Me.RecordSource = mysql & MyCriteria '& god & m & Dodatak & SortPo
+    Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+
+Private Sub cmdPregledi_Click()
+    ObrisiPregled
+End Sub
+
+Sub ObrisiPregled()
+On Error GoTo Err_cmdPregledi_Click
+   Dim polje As Recordset
+   Dim fsoWD As New FileSystemObject
+   Dim f As File
+   
+   Set polje = Me.Recordset
+   Set f = fsoWD.GetFile(CurrentProject.Path & "\Izvestaji\" & polje.Fields("Izvestaj"))
+   
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Brisete slog i file " & f.Name
+   
+   If DaNe Then
+      f.Delete True
+      polje.Delete
+   End If
+   
+Exit_cmdPregledi_Click:
+    Exit Sub
+
+Err_cmdPregledi_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdPregledi_Click
+   
+End Sub
+
+Private Sub txtDatSeek_AfterUpdate()
+   On Error Resume Next
+   
+   PuniLbox
+  
+End Sub
+
+Private Sub txtDatSeek_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtDatSeek
+   
+End Sub
+
+Private Sub txtIzvestaj_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtIzvestaj
+
+End Sub
+
+Private Sub txtLekSeek_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtLekSeek
+
+End Sub
+
+Private Sub txtPacSeek_Change()
+   On Error Resume Next
+   
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtPacSeek
+   
+End Sub
+
+Sub Reset_Input()
+   txtIzvestaj = ""
+   txtPacSeek = ""
+   txtLekSeek = ""
+   txtDatSeek = ""
+   
+   PuniLbox
+   
+   txtPacSeek.SetFocus
+End Sub
