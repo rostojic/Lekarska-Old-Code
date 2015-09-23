@@ -1,0 +1,25 @@
+Option Compare Database
+Option Explicit
+
+Dim ProgramZaGledanje As String
+
+Sub NapuniProgramZaGledanje()
+   Dim r As Recordset
+   Set r = CurrentDb.OpenRecordset("05_STARTUP")
+   ProgramZaGledanje = r.Fields("ApsImePrograma")
+End Sub
+
+Private Sub cmdView_Click()
+   On Error GoTo g
+   
+   Shell ProgramZaGledanje & " " & Chr(34) & CurrentProject.Path & "\Slike\" & Format(Me.Parent.IDPacijent, "00000#") & "\" & Me.Slika & Chr(34), vbMaximizedFocus
+   Exit Sub
+g:
+   MsgBox Err.Description
+
+End Sub
+
+Private Sub Form_Load()
+   NapuniProgramZaGledanje
+   ColorShema TrenutnaShema, Me
+End Sub
