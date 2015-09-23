@@ -1,0 +1,254 @@
+Option Compare Database
+Option Explicit
+Dim gdesamstao
+
+Private Sub cmdBrisiStara_Click()
+   Dim sql As String
+   sql = "Delete * From 06_ZAKAZIVANJE Where Datum < " & DiDi(Date)
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "brisanje starih zakazivanja"
+   If DaNe Then
+      DoCmd.RunSQL sql
+   End If
+   Me.Refresh
+   Me.Requery
+End Sub
+
+Private Sub cmdRefresh_Click()
+   On Error GoTo g
+   'Me.Refresh
+
+   If IsDate(txtTrazi) Then
+      Dim dan
+      Dim Mesec
+      Dim godina
+      dan = Day(txtTrazi)
+      Mesec = Month(txtTrazi)
+      godina = Year(txtTrazi)
+      Me.Filter = "Datum =#" & Mesec & "/" & dan & "/" & godina & "#"
+      'MsgBox Me.Filter
+      'DoCmd.ApplyFilter , "Datum =#" & txtTrazi & "#"s
+      Me.FilterOn = True
+   Else
+      Me.FilterOn = False
+      txtTrazi = ""
+   End If
+   
+   Me.Refresh
+   Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Nastala je greska" & "." & "Ponovite operaciju " & Err.Description
+
+End Sub
+
+Private Sub cmdPrint_Click()
+   
+   Dim zaslanje As String
+   If Not IsNull(txtTrazi) And txtTrazi <> "" Then
+      zaslanje = Month(txtTrazi) & "/" & Day(txtTrazi) & "/" & Year(txtTrazi)
+   End If
+   StampajZakazane zaslanje
+End Sub
+
+Private Sub StampajZakazane(d As String)
+Dim sql As String
+   If d <> "" Then
+      sql = "SELECT [06_ZAKAZIVANJE].Datum, [06_ZAKAZIVANJE].Vreme, [06_ZAKAZIVANJE].IIP as Pacijent, " & _
+         "[02_ZAPOSLENI]![Prezime] & ' ' & [02_ZAPOSLENI]![ime] AS Lekar " & _
+         "FROM 02_ZAPOSLENI INNER JOIN 06_ZAKAZIVANJE ON [02_ZAPOSLENI].IDZaposleni = [06_ZAKAZIVANJE].IDZaposleni " & _
+         "WHERE ((([06_ZAKAZIVANJE].Datum) = #" & d & "#)) " & _
+         "ORDER BY [06_ZAKAZIVANJE].Vreme; "
+   Else
+      sql = "SELECT [06_ZAKAZIVANJE].Datum, [06_ZAKAZIVANJE].Vreme, [06_ZAKAZIVANJE].IIP as Pacijent, " & _
+         "[02_ZAPOSLENI]![Prezime] & ' ' & [02_ZAPOSLENI]![ime] AS Lekar " & _
+         "FROM 02_ZAPOSLENI INNER JOIN 06_ZAKAZIVANJE ON [02_ZAPOSLENI].IDZaposleni = [06_ZAKAZIVANJE].IDZaposleni " & _
+         "ORDER BY [06_ZAKAZIVANJE].Datum, [06_ZAKAZIVANJE].Vreme; "
+   End If
+   
+   CurrentDb.QueryDefs("ZAKAZANI_Q").sql = sql
+   DoCmd.OpenReport "ZAKAZANI_R", acViewPreview
+End Sub
+
+
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+   If KeyCode = vbKeyF3 Then DoCmd.OpenForm "SearchZak_F"
+End Sub
+
+Sub ZakjucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox And ctl.Name <> "txtTrazi" Then
+         ctl.Locked = True
+      End If
+      If ctl.ControlType = acComboBox Then
+         ctl.Locked = True
+      End If
+   Next
+   
+End Sub
+
+Sub OtkljucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl.Locked = False
+      End If
+      If ctl.ControlType = acComboBox Then
+         ctl.Locked = False
+      End If
+
+   Next
+End Sub
+
+Private Sub cmdAdd_Click()
+On Error GoTo Err_cmdAdd_Click
+    Dim rs As Recordset
+    DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Novo zakazivanje"
+    If DaNe = False Then Exit Sub
+
+    Me.AllowAdditions = True
+    
+    Set rs = Me.Recordset
+    If Not (rs.BOF And rs.EOF) Then
+      gdesamstao = Me.Bookmark
+    End If
+    
+    OtkljucajTextPolja
+    DoCmd.GoToRecord , , acNewRec
+    
+    cmdSave.Visible = True
+    cmdUndo.Visible = True
+         
+    Me.Datum.SetFocus
+         
+   cmdAdd.Visible = False
+   tglKatanac.Visible = False
+   cmdRefresh.Visible = False
+   cmdClose.Visible = False
+   cmdPrint.Visible = False
+   cmdBrisiStara.Visible = False
+   
+Exit_cmdAdd_Click:
+    Exit Sub
+
+Err_cmdAdd_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdAdd_Click
+    
+End Sub
+
+Private Sub cmdClose_Click()
+   DoCmd.Close
+End Sub
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then DoCmd.Close
+End Sub
+
+Private Sub Form_Load()
+   
+   Me.FilterOn = False
+   ColorShema TrenutnaShema, Me
+   ZakjucajTextPolja
+   
+End Sub
+
+Private Sub Label13_Click()
+   txtTrazi.SetFocus
+End Sub
+
+Private Sub tglKatanac_Click()
+   If tglKatanac = True Then
+      OtkljucajTextPolja
+      'tglKatanac.ControlTipText = "Zakljucaj"
+   Else
+      ZakjucajTextPolja
+      'tglKatanac.ControlTipText = "Otkljucaj"
+   End If
+   Me.Requery
+   Me.Refresh
+End Sub
+
+Private Sub cmdSave_Click()
+On Error GoTo Err_cmdSave_Click
+      
+   DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "snimanje"
+   If DaNe Then
+      
+      DoCmd.DoMenuItem acFormBar, acRecordsMenu, acSaveRecord, , acMenuVer70
+
+      ZakjucajTextPolja
+      Me.AllowAdditions = False
+
+    cmdAdd.Visible = True
+    tglKatanac.Visible = True
+    
+   cmdAdd.Visible = True
+   tglKatanac.Visible = True
+   cmdRefresh.Visible = True
+   cmdClose.Visible = True
+   cmdPrint.Visible = True
+   cmdBrisiStara.Visible = True
+    
+    cmdClose.SetFocus
+    
+   cmdUndo.Visible = False
+   cmdSave.Visible = False
+   Me.Recordset.Sort = "Datum, Vreme"
+   Me.Requery
+   Me.Refresh
+   
+   End If
+Exit_cmdSave_Click:
+    Exit Sub
+
+Err_cmdSave_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdSave_Click
+    
+End Sub
+
+Private Sub cmdUndo_Click()
+   On Error Resume Next
+     
+   DoCmd.DoMenuItem acFormBar, acEditMenu, acUndo, , acMenuVer70
+
+   Me.Bookmark = gdesamstao
+   IsprazniPolja
+   ZakjucajTextPolja
+   
+    
+   Me.AllowAdditions = False
+  
+   cmdAdd.Visible = True
+   tglKatanac.Visible = True
+   cmdRefresh.Visible = True
+   cmdClose.Visible = True
+   cmdPrint.Visible = True
+   cmdBrisiStara.Visible = True
+  
+   
+    cmdAdd.Visible = True
+    tglKatanac.Visible = True
+    
+    cmdAdd.SetFocus
+   cmdSave.Visible = False
+   cmdUndo.Visible = False
+   
+End Sub
+
+Sub IsprazniPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl = ""
+      End If
+   Next
+End Sub
+
+
+
+Private Sub txtTrazi_GotFocus()
+   txtTrazi = Format(Date, "Short Date")
+   Me.Refresh
+End Sub
