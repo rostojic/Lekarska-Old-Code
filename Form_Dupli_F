@@ -1,0 +1,46 @@
+Option Compare Database
+Option Explicit
+
+Private Sub Odradi()
+   'Setujem public varijablu ...
+   Dim indexOznacenog As Long
+   
+   OdlukaZaDuplog = Frame1.Value
+   If OdlukaZaDuplog = 2 Then
+        If lstPacijenti.ListIndex = -1 Then
+            indexOznacenog = 0
+        Else
+            indexOznacenog = lstPacijenti.ListIndex
+        End If
+        GdeDaSkocim = lstPacijenti.ItemData(indexOznacenog)
+   End If
+   DoCmd.Close acForm, "DUPLI_F"
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   Me.Caption = "Problem istog pacijenta!!!"
+
+End Sub
+
+Private Sub Label8_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Label8.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Label8_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Odradi
+   End If
+End Sub
+
+Private Sub Form_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Label8.SpecialEffect = acEffectRaised
+   End If
+End Sub
+
+
+
+
