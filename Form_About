@@ -1,0 +1,18 @@
+Option Compare Database
+Option Explicit
+
+Private Sub Detail_Click()
+   DoCmd.Close
+End Sub
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+   If KeyCode = 27 Then DoCmd.Close
+End Sub
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+    If KeyAscii = 27 Then DoCmd.Close
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+End Sub
