@@ -1,0 +1,642 @@
+Option Compare Database
+
+Dim gdesamstao As String
+Dim ImeDokumenta As String
+Dim FolderIzv As String
+Dim ProveraImenaDokumenta As String
+Dim RezimUnosa As Boolean
+
+
+
+'Vraca -1 ako je sve u redu (pacijent je dosao 1. put kod tog doktora tog dana
+'Vraca poziciju u rs izvestaja koji vec postoji (drugi ili treci put dosao ISTOG dana kod ISTOG lekara
+
+Function ProveriNoviPregled() As Long
+   'Bez imena izvestaja, to se radi na sledecoj formi ...
+   Dim rs As Recordset
+   
+   
+   Set rs = CurrentDb.OpenRecordset("03_PREGLEDI")
+   
+   ProveraImenaDokumenta = Format(Me.IDPacijent, "0000") & "_" & Format(Me.cboLekar, "0000") & "_" & _
+                          Year(Date) & "-" & Format(Month(Date), "00") & "-" & Format(Day(Date), "00") & _
+                          ".doc"
+   
+   Dim Kriterijum As String
+   Kriterijum = "Izvestaj = '" & ProveraImenaDokumenta & "'"
+
+   rs.FindFirst Kriterijum
+   
+   If rs.NoMatch Then
+      ProveriNoviPregled = CLng(-1)
+   Else
+      ProveriNoviPregled = CLng(rs.Fields("IDPoseta").Value)
+   End If
+   
+   rs.Close
+   
+End Function
+
+Private Sub cboTrazi_AfterUpdate()
+    On Error Resume Next
+    Dim rs As Recordset
+   
+    Set rs = Me.Recordset.Clone
+    If Not IsNull(cboTrazi) Then
+      rs.FindFirst "[IDPacijent] = " & CLng(Me.cboTrazi)
+    End If
+        
+    If Not rs.NoMatch Then
+      Me.Bookmark = rs.Bookmark
+      Call Pregledi_Click
+      Me.Ime.SetFocus
+    End If
+    cboTrazi = ""
+End Sub
+
+Private Sub cboTrazi_GotFocus()
+   fraIzborPretrage_AfterUpdate
+End Sub
+
+
+Private Sub cmdView_Click()
+   On Error GoTo g
+   
+   Dim r As Recordset
+   Set r = CurrentDb.OpenRecordset("05_STARTUP")
+   Dim ProgramZaGledanje As String
+   ProgramZaGledanje = r.Fields("ApsImePrograma")
+
+   'MsgBox ProgramZaGledanje & " " & Chr(34) & CurrentProject.Path & "\Slike\" & Format(IDPacijent, "00000#") & Chr(34)
+   
+   Shell ProgramZaGledanje & " " & Chr(34) & CurrentProject.Path & "\Slike\" & Format(IDPacijent, "00000#") & Chr(34), vbMaximizedFocus
+   Exit Sub
+g:
+   MsgBox Err.Description
+
+End Sub
+Private Sub DatumRodj_AfterUpdate()
+   If Not (IsNull(Me.Ime) Or IsNull(Me.Prezime) Or IsNull(Me.DatumRodj)) Then
+      Me.Broj = BP(Me.Ime, Me.Prezime, Me.DatumRodj)
+      Me.Broj.Visible = True
+   End If
+End Sub
+
+Private Sub Drzava_AfterUpdate()
+   If UnicodePodrzan Then
+        Me.Drzava = StrConv(Me.Drzava, vbProperCase)
+   End If
+End Sub
+
+Private Sub Form_Activate()
+   OsveziListu
+End Sub
+
+Private Sub Form_Current()
+   OsveziListu
+   Me.cmdView.Enabled = ImaLiFotki(Me.IDPacijent)
+ End Sub
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+   If KeyCode = vbKeyF3 Then DoCmd.OpenForm "Search_F"
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   DoCmd.Maximize
+  
+   ZakjucajTextPolja
+   cmdSledeci.SetFocus
+
+End Sub
+
+
+Private Sub fraIzborPretrage_AfterUpdate()
+    Dim sql As String
+    Select Case fraIzborPretrage.Value
+      Case 1
+         sql = "SELECT IDPacijent, [Ime] &  ' ' & [Prezime] AS IIP, " & _
+               "Broj, DatumRodj, MestoStanovanja, Telefon " & _
+               "FROM 01_PACIJENTI " & _
+               "ORDER BY Ime,Prezime, MestoStanovanja;"
+      Case 2
+       sql = "SELECT IDPacijent, [Prezime] &  ' ' & [Ime] AS PII, " & _
+               "Broj, DatumRodj, MestoStanovanja, Telefon " & _
+               "FROM 01_PACIJENTI " & _
+               "ORDER BY Prezime,Ime, MestoStanovanja;"
+      Case 3
+       sql = "SELECT IDPacijent, Broj, [Ime] &  ' ' & [Prezime] AS PII, " & _
+               "DatumRodj, MestoStanovanja, Telefon " & _
+               "FROM 01_PACIJENTI " & _
+               "ORDER BY Broj,Prezime,Ime;"
+      Case 4
+       sql = "SELECT IDPacijent, TelefonMobilni, [Prezime] &  ' ' & [Ime] AS PII, " & _
+               "DatumRodj, MestoStanovanja, Telefon " & _
+               "FROM 01_PACIJENTI " & _
+               "ORDER BY TelefonMobilni,Prezime,Ime;"
+      Case 5
+       sql = "SELECT IDPacijent, Telefon, [Prezime] &  ' ' & [Ime] AS PII, " & _
+               "DatumRodj, MestoStanovanja, Telefon " & _
+               "FROM 01_PACIJENTI " & _
+               "ORDER BY Telefon,Prezime,Ime;"
+      Case 6
+       sql = "SELECT IDPacijent, Ulica, [Prezime] &  ' ' & [Ime] AS PII, " & _
+               "DatumRodj, MestoStanovanja, Telefon " & _
+               "FROM 01_PACIJENTI " & _
+               "ORDER BY Ulica,Prezime,Ime;"
+    End Select
+
+
+   cboTrazi.RowSource = sql
+   cboTrazi.Requery
+   cboTrazi.SetFocus
+End Sub
+
+Private Sub cmdAdd_Click()
+On Error GoTo Err_cmdAdd_Click
+    Dim rs As Recordset
+    DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Dodavanje novog pacijenta u bazu"
+    If DaNe = False Then
+        Exit Sub
+    End If
+    Me.AllowAdditions = True
+    Me.Tab.Pages.Item(2).Visible = False
+    Me.Tab.Pages.Item(3).Visible = False
+    
+    
+    Set rs = Me.Recordset
+    If Not (rs.BOF And rs.EOF) Then
+      gdesamstao = Me.Bookmark
+    End If
+    
+    OtkljucajTextPolja
+    Me.Tab.Visible = True
+    DoCmd.GoToRecord , , acNewRec
+     
+    Me.Broj.Visible = False
+    Me.cboLekar = Null
+    Me.Ime.SetFocus
+    
+    cmdPrvi.Visible = False
+    cmdPrethodni.Visible = False
+    cmdSledeci.Visible = False
+    cmdZadnji.Visible = False
+    cmdAdd.Visible = False
+    tglKatanac.Visible = False
+    
+    cmdSave.Visible = True
+    cmdUndo.Visible = True
+    RezimUnosa = True
+Exit_cmdAdd_Click:
+    Exit Sub
+
+Err_cmdAdd_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdAdd_Click
+    
+End Sub
+
+Private Sub cmdClose_Click()
+On Error GoTo Err_cmdClose_Click
+    If RezimUnosa Then
+        DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Niste snimili pacijenta" & "." & "Snimite ili odustanite"
+        Exit Sub
+    End If
+    DoCmd.Close
+
+Exit_cmdClose_Click:
+    Exit Sub
+
+Err_cmdClose_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+    Resume Exit_cmdClose_Click
+    
+End Sub
+
+Private Sub NoviPregled()
+On Error GoTo greska
+
+Dim stDocName As String
+Dim stLinkCriteria As String
+Dim rs As Recordset
+
+   If IsNull(Me.cboLekar.Column(0)) Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Za pregled je potrebno dvoje" & "." & "Izaberite lekara"
+      'MsgBox "Unesite lekara ...", vbExclamation, "Podsetnik ..."
+      cboLekar.SetFocus
+      Exit Sub
+   End If
+      
+   'Otvaram tabelu pregleda
+   Set rs = CurrentDb.OpenRecordset("03_PREGLEDI")
+   
+   stDocName = "SLIKE_F"
+   'Link za standardan slucaj ...
+   
+   
+   Dim rv As Long
+   'poziv funkcije za proveru postojanja izvestaja ...
+   rv = ProveriNoviPregled
+   
+   If rv = -1 Then
+      'Dodajem novi izvestaj (SVE je OK)
+      DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Pacijent: " & Me.Ime & " " & Me.Prezime & " i lekar: " & Me.cboLekar.Column(1)
+      If DaNe Then
+         NoviIzv = True
+         Me.Refresh
+         With rs
+            .AddNew
+            .Fields("IDPacijent") = CLng(Me.IDPacijent)
+            .Fields("IDZaposleni") = CLng(Me.cboLekar)
+            .Fields("Datum") = Date
+            'Odraditi na drugoj formi ...
+            '.Fields("Izvestaj") = ImeDokumenta
+            .Fields("VrstaID") = CLng(Me.cboLekar.Column(4))
+            .Update
+         End With
+         rs.MoveLast
+         'Idemo na novu formu ...
+         stLinkCriteria = "[IDPoseta]=" & rs.Fields("IDPoseta") & " And " & "[IDPacijent]=" & Me![IDPacijent]
+         
+         DoCmd.OpenForm stDocName, , , stLinkCriteria, , , "NOVI"
+      End If
+   Else
+      'Pozivam formu za odluku ... i ova funkcija ceka povratnu vrednost iz forme odluka_F
+      DoCmd.OpenForm "Odluka_F", , , , , acDialog, Me.IDPacijent & "z" & Me.cboLekar & "Pacijent: " & _
+                     Me.Ime & " " & Me.Prezime & " i lekar: " & Me.cboLekar.Column(1)
+      
+      Select Case Odluka
+         'Otvaram novi izvestaj sa posebnim imenom ...
+         Case 2
+            With rs
+               .AddNew
+               .Fields("IDPacijent") = CLng(Me.IDPacijent)
+               .Fields("IDZaposleni") = CLng(Me.cboLekar)
+               .Fields("Datum") = Date
+               'Odraditi na drugoj formi ...
+               '.Fields("Izvestaj") = ImeDokumenta
+               .Fields("VrstaID") = CLng(Me.cboLekar.Column(4))
+               .Update
+            End With
+            rs.MoveLast
+            'Saljem signal u  openargs
+            stLinkCriteria = "[IDPoseta]=" & rs.Fields("IDPoseta") & " And " & "[IDPacijent]=" & Me![IDPacijent]
+            
+            DoCmd.OpenForm stDocName, , , stLinkCriteria, , , "NOVI_ISTI_DAN"
+         Case 3
+            If izabrani = 0 Then
+               MsgBox "Niste izabrali izvestaj", vbCritical, "Greska"
+               rs.Close
+               Exit Sub
+            End If
+            stLinkCriteria = "[IDPoseta]=" & izabrani
+
+            DoCmd.OpenForm stDocName, , , stLinkCriteria, , , "STARI_DOPUNA"
+         Case 1
+            'Prazno
+      End Select
+   End If
+   
+   rs.Close
+   
+   Exit Sub
+
+greska:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+
+Private Sub Ime_AfterUpdate()
+   If Not (IsNull(Me.Ime) Or IsNull(Me.Prezime) Or IsNull(Me.DatumRodj)) Then
+      Me.Broj = BP(Me.Ime, Me.Prezime, Me.DatumRodj)
+      Me.Broj.Visible = True
+      
+   End If
+   If UnicodePodrzan Then
+        Me.Ime = StrConv(Me.Ime, vbProperCase)
+   End If
+End Sub
+
+Private Sub lblNoviPregled_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      lblNoviPregled.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub lblNoviPregled_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      NoviPregled
+      lblNoviPregled.SpecialEffect = acEffectRaised
+   End If
+End Sub
+
+Private Sub lstPregledi_Click()
+   Me.txtIDPoseta = lstPregledi.Column(0)
+   'Me.Refresh
+End Sub
+
+Private Sub lstPregledi_DblClick(Cancel As Integer)
+   Dim stDocName As String
+   Dim stLinkCriteria As String
+   
+   If lstPregledi.ListIndex = -1 Then
+      Exit Sub
+   End If
+   
+   stDocName = "SLIKE_F"
+
+   stLinkCriteria = "[IDPoseta]=" & lstPregledi.Column(0) & " And " & "[IDPacijent]=" & Me![IDPacijent]
+   Dim ImeFajla As String
+   ImeFajla = lstPregledi.Column(3)
+   If PostojiDocFile(ImeFajla) Then
+      DoCmd.OpenForm stDocName, , , stLinkCriteria, , , "STARI"
+   Else
+      MsgBox "File po imenu" & vbNewLine & ImeFajla & vbNewLine & "ne postoji!", vbCritical, "Greska"
+   End If
+End Sub
+
+Private Sub MestoRodjena_AfterUpdate()
+If UnicodePodrzan Then
+   Me.MestoRodjena = StrConv(Me.MestoRodjena, vbProperCase)
+End If
+End Sub
+
+Private Sub MestoStanovanja_AfterUpdate()
+If UnicodePodrzan Then
+   Me.MestoStanovanja = StrConv(Me.MestoStanovanja, vbProperCase)
+End If
+End Sub
+
+Private Sub Pregledi_Click()
+   'OsveziListu
+   Me.cboLekar.SetFocus
+   cboLekar = Null
+   
+End Sub
+
+Sub OsveziListu()
+   Dim sql As String
+   If Me.Recordset.BOF And Me.Recordset.EOF Then Exit Sub
+   If Not IsNull(Me.IDPacijent) Then
+         
+      sql = "SELECT [03_PREGLEDI].IDPoseta, [03_PREGLEDI].IDPacijent, [03_PREGLEDI].Datum, " & _
+            "[03_PREGLEDI].Izvestaj, [02_ZAPOSLENI].[Ime] & ' ' & [02_ZAPOSLENI].[Prezime] AS LEKAR " & _
+            "FROM 02_ZAPOSLENI INNER JOIN " & _
+            "(01_PACIJENTI INNER JOIN 03_PREGLEDI ON [01_PACIJENTI].IDPacijent = [03_PREGLEDI].IDPacijent) " & _
+            "ON [02_ZAPOSLENI].IDZaposleni = [03_PREGLEDI].IDZaposleni " & _
+            "WHERE ((([03_PREGLEDI].IDPacijent) = " & Me.IDPacijent & ")) ORDER BY [03_PREGLEDI].Datum DESC;"
+      
+      CurrentDb.QueryDefs("01_IZVESTAJ_LIST").sql = sql
+      Me.lstPregledi.RowSource = sql
+      Me.lstPregledi.Requery
+      Me.Refresh
+   Else
+      lstPregledi.RowSource = ""
+      lstPregledi.Requery
+   End If
+   
+End Sub
+
+
+
+Sub ZakjucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl.Locked = True
+      End If
+      If ctl.ControlType = acOptionGroup And ctl.Name <> "fraIzborPretrage" Then
+         ctl.Locked = True
+      End If
+   Next
+   
+End Sub
+
+Sub OtkljucajTextPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl.Locked = False
+      End If
+      If ctl.ControlType = acOptionGroup Then
+         ctl.Locked = False
+      End If
+
+   Next
+   txtImeiPrezime.Locked = True
+End Sub
+
+Private Sub Prezime_AfterUpdate()
+   If Not (IsNull(Me.Ime) Or IsNull(Me.Prezime) Or IsNull(Me.DatumRodj)) Then
+      Me.Broj = BP(Me.Ime, Me.Prezime, Me.DatumRodj)
+      Me.Broj.Visible = True
+   End If
+   If UnicodePodrzan Then
+        Me.Prezime = StrConv(Me.Prezime, vbProperCase)
+   End If
+End Sub
+
+Private Sub tglKatanac_Click()
+   If tglKatanac = True Then
+      OtkljucajTextPolja
+'      tglKatanac.ControlTipText = "Zakljucaj"
+   Else
+      ZakjucajTextPolja
+'      tglKatanac.ControlTipText = "Otkljucaj"
+   End If
+End Sub
+
+Private Sub cmdSave_Click()
+On Error GoTo Err_cmdSave_Click
+      
+   If IsNull(Me.Ime) Or IsNull(Me.Prezime) _
+      Or IsNull(Me.DatumRodj) Then
+      'MsgBox "NEMATE NEOPHODNE PODATKE O PACIJENTU"
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Potrebni podaci su:" & "." & "ime, prezime, datum rodjenja"
+      Exit Sub
+   End If
+   
+   If OsnovnaProvera Then
+        DoCmd.OpenForm "MSGBOX_F", , , , , acDialog, "Snimanje"
+   
+       If DaNe Then
+          
+            DoCmd.DoMenuItem acFormBar, acRecordsMenu, acSaveRecord, , acMenuVer70
+            
+            ZakjucajTextPolja
+            Me.AllowAdditions = False
+            Me.Tab.Pages.Item(2).Visible = True
+            Me.Tab.Pages.Item(3).Visible = True
+            Me.cboLekar.SetFocus
+            cmdUndo.Visible = False
+            cmdSave.Visible = False
+            
+            cmdPrvi.Visible = True
+            cmdPrethodni.Visible = True
+            cmdSledeci.Visible = True
+            cmdZadnji.Visible = True
+            cmdAdd.Visible = True
+            tglKatanac.Visible = True
+            RezimUnosa = False
+       End If
+   Else
+   'Prikazati neku formu ...
+        'MsgBox ("Postoji takav pacijent u bazi")
+        DoCmd.OpenForm "DUPLI_F", , , , , acDialog
+        If OdlukaZaDuplog = 1 Then
+        'Hoce da doda
+            DoCmd.DoMenuItem acFormBar, acRecordsMenu, acSaveRecord, , acMenuVer70
+            
+            ZakjucajTextPolja
+            Me.AllowAdditions = False
+            Me.Tab.Pages.Item(2).Visible = True
+            Me.Tab.Pages.Item(3).Visible = True
+            Me.cboLekar.SetFocus
+            cmdUndo.Visible = False
+            cmdSave.Visible = False
+            
+            cmdPrvi.Visible = True
+            cmdPrethodni.Visible = True
+            cmdSledeci.Visible = True
+            cmdZadnji.Visible = True
+            cmdAdd.Visible = True
+            tglKatanac.Visible = True
+        Else
+        'Ide na postojeceg
+            DoCmd.DoMenuItem acFormBar, acEditMenu, acUndo, , acMenuVer70
+            
+            'IsprazniPolja
+            ZakjucajTextPolja
+            cmdPrvi.Visible = True
+            cmdPrvi.SetFocus
+            cmdSave.Visible = False
+            cmdUndo.Visible = False
+            Me.AllowAdditions = False
+            Me.Tab.Pages.Item(2).Visible = True
+            Me.Tab.Pages.Item(3).Visible = True
+            
+            cmdPrethodni.Visible = True
+            cmdSledeci.Visible = True
+            cmdZadnji.Visible = True
+            cmdAdd.Visible = True
+            tglKatanac.Visible = True
+            
+            UcitajOznacenog
+        End If
+        
+   End If
+   RezimUnosa = False
+Exit_cmdSave_Click:
+    Exit Sub
+
+Err_cmdSave_Click:
+    DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Number & Err.Description
+    Resume Exit_cmdSave_Click
+    
+End Sub
+
+'Proverava da li pacijent postoji
+Function OsnovnaProvera() As Boolean
+    Dim SQLuslov As String
+    SQLuslov = "SELECT [01_PACIJENTI].IDPacijent, [01_PACIJENTI].Ime, [01_PACIJENTI].Prezime, [01_PACIJENTI].DatumRodj, [01_PACIJENTI].Telefon " & _
+              "FROM 01_PACIJENTI " & _
+              "WHERE ((([01_PACIJENTI].Ime)=" & Chr(34) & Me.Ime & Chr(34) & ") AND (([01_PACIJENTI].Prezime)=" & Chr(34) & Me.Prezime & Chr(34) & ") AND (([01_PACIJENTI].DatumRodj)=" & DiDi(Me.DatumRodj) & "));"
+
+     CurrentDb.QueryDefs("ProveraIPD").sql = SQLuslov
+     If CurrentDb.QueryDefs("ProveraIPD").OpenRecordset.RecordCount > 0 Then
+        OsnovnaProvera = False
+     Else
+        OsnovnaProvera = True
+     End If
+
+End Function
+Private Sub cmdUndo_Click()
+   On Error Resume Next
+     
+    DoCmd.DoMenuItem acFormBar, acEditMenu, acUndo, , acMenuVer70
+    
+    Me.Bookmark = gdesamstao
+    IsprazniPolja
+    ZakjucajTextPolja
+    cmdPrvi.Visible = True
+    cmdPrvi.SetFocus
+    cmdSave.Visible = False
+    cmdUndo.Visible = False
+    Me.AllowAdditions = False
+    Me.Tab.Pages.Item(2).Visible = True
+    Me.Tab.Pages.Item(3).Visible = True
+    
+    
+    cmdPrethodni.Visible = True
+    cmdSledeci.Visible = True
+    cmdZadnji.Visible = True
+    cmdAdd.Visible = True
+    tglKatanac.Visible = True
+    RezimUnosa = False
+   
+End Sub
+
+Sub IsprazniPolja()
+   Dim ctl As Control
+   For Each ctl In Me.Controls
+      If ctl.ControlType = acTextBox Then
+         ctl = ""
+      End If
+   Next
+End Sub
+Private Sub cmdPrvi_Click()
+On Error Resume Next
+       
+    DoCmd.GoToRecord , , acFirst
+
+    'OsveziListu
+End Sub
+
+Private Sub cmdPrethodni_Click()
+
+On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+    'OsveziListu
+End Sub
+Private Sub cmdSledeci_Click()
+   On Error Resume Next
+
+   DoCmd.GoToRecord , , acNext
+   
+   'OsveziListu
+End Sub
+Private Sub cmdZadnji_Click()
+   On Error Resume Next
+
+   DoCmd.GoToRecord , , acLast
+   'OsveziListu
+End Sub
+
+
+Sub UcitajOznacenog()
+    On Error Resume Next
+    
+    Dim rs As Recordset
+    Dim indexOznacenog As Long
+    
+    Set rs = Forms("PACIJENTI_F").Recordset.Clone
+        
+    rs.FindFirst "[IDPacijent] = " & GdeDaSkocim
+               
+   'Ako je nesto pronadjeno ...
+    If Not rs.NoMatch Then
+      Forms("PACIJENTI_F").Bookmark = rs.Bookmark
+      Call Forms("PACIJENTI_F").Pregledi_Click
+      Forms("PACIJENTI_F").Ime.SetFocus
+    End If
+    Set rs = Nothing
+End Sub
+
+Private Sub Form_Unload(Cancel As Integer)
+   If RezimUnosa Then
+      DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Niste snimili pacijenta" & "." & "Snimite ili odustanite"
+      Cancel = -1
+   End If
+   ZakjucajTextPolja
+   Me.tglKatanac = False
+End Sub
+
