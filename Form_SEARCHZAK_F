@@ -1,0 +1,96 @@
+Option Compare Database
+Option Explicit
+Dim mysql As String, MyCriteria As String
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then DoCmd.Close
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   txtTrazi.SetFocus
+   OsveziKaunter
+End Sub
+
+Private Sub lstPacijenti_Click()
+   UcitajOznacenog
+   DoCmd.Close
+End Sub
+
+Private Sub txtTrazi_Change()
+   On Error Resume Next
+  
+   PuniLbox
+   'Omogucava suzenje liste ...
+   PodesiTextBox txtTrazi
+   OsveziKaunter
+   
+End Sub
+
+Private Sub PuniLbox()
+    '  Create a WHERE clause using search criteria entered by user and
+    '  set RecordSource property of Lbox
+    On Error GoTo g
+    Dim MyRecordSource As String, MyOrder As String
+    Dim ArgCount As Integer
+    Dim tmp As Variant
+    Dim Msg As String
+    
+    '  Initialize argument count.
+    ArgCount = 0
+    
+    '  Initialize SELECT statement.
+    mysql = "SELECT IIPP, IDPacijent FROM PACIJENTI_Q WHERE "
+    MyCriteria = ""
+    
+    Me.Recalc
+    
+    '  Use values entered in text boxes in form header to create criteria for WHERE clause.
+    AddToWhere txtTrazi, "IIPP", MyCriteria, ArgCount
+    'AddToWhere Me.txtLekSeek, "[IIPL]", MyCriteria, ArgCount
+    'AddToWhere Me.txtDatSeek, "[Datum]", MyCriteria, ArgCount
+    'AddToWhere Me.txtIzvestaj, "[Izvestaj]", MyCriteria, ArgCount
+    
+    '  If no criterion specifed, return all records.
+    If MyCriteria = "" Then
+        MyCriteria = "True"
+    End If
+    
+    '  Create SELECT statement.
+        
+    lstPacijenti.RowSource = mysql & MyCriteria
+    
+    Exit Sub
+g:
+   DoCmd.OpenForm "UPOZORENJE_F", , , , , acDialog, "Greska" & "." & Err.Description
+End Sub
+
+Private Sub txtTrazi_KeyDown(KeyCode As Integer, Shift As Integer)
+   If KeyCode = vbKeyReturn Then
+      UcitajPrvog
+      DoCmd.Close acForm, "SearchZak_F"
+   End If
+End Sub
+
+Sub UcitajPrvog()
+
+    On Error Resume Next
+           
+    'Forms("ZAKAZIVANJE_F").IIP = lstPacijenti.ItemData(1)
+    Forms("ZAKAZIVANJE_F").IIP = lstPacijenti.Column(0, 0)
+
+End Sub
+
+Sub UcitajOznacenog()
+    On Error Resume Next
+    
+    Dim indexOznacenog As Long
+    indexOznacenog = lstPacijenti.ListIndex
+    Forms("ZAKAZIVANJE_F").IIP = lstPacijenti.Column(0, indexOznacenog)
+
+End Sub
+
+Sub OsveziKaunter()
+   txtCounter = lstPacijenti.ListCount
+End Sub
+
