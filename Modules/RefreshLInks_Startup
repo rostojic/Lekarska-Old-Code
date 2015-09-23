@@ -1,0 +1,28 @@
+Option Compare Database
+Option Explicit
+
+Public Function RefreshLinks(strFileName As String) As Boolean
+' Refresh links to the supplied database. Return True if successful.
+
+    Dim dbs As DAO.Database
+    Dim tdf As DAO.TableDef
+
+    ' Loop through all tables in the database.
+    Set dbs = CurrentDb
+    For Each tdf In dbs.TableDefs
+        ' If the table has a connect string, it's a linked table.
+        If Len(tdf.Connect) > 0 Then
+            tdf.Connect = ";DATABASE=" & strFileName
+            Err = 0
+            On Error Resume Next
+            tdf.RefreshLink         ' Relink the table.
+            If Err <> 0 Then
+                RefreshLinks = False
+                Exit Function
+            End If
+        End If
+    Next tdf
+
+    RefreshLinks = True        ' Relinking complete.
+    
+End Function
