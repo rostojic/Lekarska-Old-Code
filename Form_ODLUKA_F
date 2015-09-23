@@ -1,0 +1,75 @@
+Option Compare Database
+Option Explicit
+Dim ZaNaslov As String
+Dim brojpacijenta As Long
+Dim brojlekara As Long
+
+
+Private Sub Odradi()
+   'Setujem public varijablu ...
+   Odluka = Frame1.Value
+   DoCmd.Close acForm, "ODLUKA_F"
+End Sub
+
+Private Sub Form_KeyPress(KeyAscii As Integer)
+   If KeyAscii = 27 Then DoCmd.Close
+End Sub
+
+Private Sub Form_Load()
+   ColorShema TrenutnaShema, Me
+   If Not IsNull(Me.OpenArgs) Then
+      parsiraj OpenArgs
+      Me.Caption = ZaNaslov
+      
+   End If
+   Dim sql As String
+   sql = "SELECT [03_PREGLEDI].IDPoseta, [03_PREGLEDI].Izvestaj " & _
+         "FROM 03_PREGLEDI " & _
+         "WHERE Datum >=#" & Month(Date) & "/" & Day(Date) & "/" & Year(Date) & "# AND IDPacijent=" & brojpacijenta & " And IDZaposleni=" & brojlekara & ";"
+   Me.lstDanasBili.RowSource = sql
+   lstDanasBili.Requery
+   Me.Refresh
+   lstDanasBili.Enabled = False
+End Sub
+
+Sub parsiraj(s As String)
+   'Prvo ide brojpacijenata, pa slovo "z", pa broj lekara, pa x
+   Dim brojevi As String
+   brojevi = Mid(OpenArgs, 1, InStr(1, OpenArgs, "P") - 1)
+   brojpacijenta = CLng(Mid(brojevi, 1, InStr(1, brojevi, "z") - 1))
+   brojlekara = CLng(Mid(brojevi, InStr(1, brojevi, "z") + 1))
+   ZaNaslov = Mid(OpenArgs, Len(brojevi) + 1)
+End Sub
+
+Private Sub Frame1_AfterUpdate()
+   If Frame1.Value = 3 Then
+      lstDanasBili.Enabled = True
+   Else
+      lstDanasBili.Selected(lstDanasBili.ListIndex) = False
+      lstDanasBili.Enabled = False
+   End If
+End Sub
+
+Private Sub Label8_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Label8.SpecialEffect = acEffectSunken
+   End If
+End Sub
+
+Private Sub Label8_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Odradi
+   End If
+End Sub
+
+Private Sub Form_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single)
+   If Button = acLeftButton Then
+      Label8.SpecialEffect = acEffectRaised
+   End If
+End Sub
+
+Private Sub lstDanasBili_Click()
+   'Ovako se uzima vrednost PRVE kolone izabrane stavke iz list boxa
+   izabrani = lstDanasBili.ItemData(lstDanasBili.ListIndex)
+   
+End Sub
